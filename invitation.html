@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <!-- Критично для iPhone - viewport и совместимость -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!-- iOS specific meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+    <title>Тансуу - Қыз Ұзату Тойы</title>
+    
+    <!-- Preconnect для ускорения загрузки -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- EmailJS SDK с defer для iOS -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js" defer></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            /* Отключаем callout на iOS */
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --bg-color: #f5f0e8;
+            --text-color: #1a1a1a;
+            --green-primary: #2d5016;
+            --gold-accent: #d4af37;
+            --cream: #faf8f3;
+            --envelope-color: #33471d;
+        }
+
+        html {
+            /* Плавная прокрутка для iOS */
+            -webkit-overflow-scrolling: touch;
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+            min-height: 100vh;
+            /* Фикс для iOS Safari 100vh проблемы */
+            min-height: -webkit-fill-available;
+            /* Предотвращаем bounce эффект */
+            overscroll-behavior: none;
+            position: relative;
+        }
+
+        /* Background Ornament */
+        .bg-ornament-center {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            opacity: 0.08;
+            pointer-events: none;
+            z-index: 0;
+            background-image: url('https://i.pinimg.com/736x/74/5b/17/745b17732e30292f7671d85e9ce2c0e7.jpg?w=740&q=80');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: contrast(2) brightness(1.2) saturate(0);
+            mix-blend-mode: multiply;
+            /* Фикс для iOS background-attachment */
+            -webkit-transform: translate(-50%, -50%);
+        }
+
+        /* Envelope Overlay - фикс для iOS z-index и transform */
+        .envelope-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Фикс для iOS 100vh */
+            height: 100vh;
+            height: -webkit-fill-available;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--envelope-color);
+            transition: opacity 1s ease, visibility 1s ease;
+            overflow: hidden;
+            /* Фикс для iOS position: fixed при скролле */
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+        }
+
+        .envelope-container.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            display: none; /* Полностью убираем для iOS */
+        }
+
+        .envelope-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                repeating-linear-gradient(
+                    90deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0,0,0,0.05) 2px,
+                    rgba(0,0,0,0.05) 4px
+                ),
+                linear-gradient(135deg, #3d5220 0%, #33471d 50%, #2a3d15 100%);
+        }
+
+        .envelope-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60%;
+            background: linear-gradient(to top, #2a3d15, #33471d);
+            clip-path: polygon(0 100%, 50% 0, 100% 100%);
+            z-index: 1;
+            /* Фикс для iOS clip-path */
+            -webkit-clip-path: polygon(0 100%, 50% 0, 100% 100%);
+        }
+
+        .envelope-left {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(135deg, #3d5220 0%, #33471d 100%);
+            clip-path: polygon(0 0, 100% 60%, 100% 100%, 0 100%);
+            z-index: 2;
+            -webkit-clip-path: polygon(0 0, 100% 60%, 100% 100%, 0 100%);
+        }
+
+        .envelope-right {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(-135deg, #3d5220 0%, #33471d 100%);
+            clip-path: polygon(0 60%, 100% 0, 100% 100%, 0 100%);
+            z-index: 2;
+            -webkit-clip-path: polygon(0 60%, 100% 0, 100% 100%, 0 100%);
+        }
+
+        .envelope-flap {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 55%;
+            background: linear-gradient(to bottom, #3d5220, #33471d);
+            clip-path: polygon(0 0, 100% 0, 50% 100%);
+            z-index: 3;
+            transform-origin: top;
+            -webkit-transform-origin: top;
+            transition: transform 0.8s ease, opacity 0.8s ease;
+            -webkit-transition: -webkit-transform 0.8s ease, opacity 0.8s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            -webkit-clip-path: polygon(0 0, 100% 0, 50% 100%);
+        }
+
+        /* Восковая печать - оптимизация для тач-устройств */
+        .wax-seal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            -webkit-transform: translate(-50%, -50%);
+            width: 140px;
+            height: 140px;
+            z-index: 10;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            -webkit-transition: all 0.3s ease;
+            overflow: hidden;
+            border-radius: 50%;
+            background: radial-gradient(circle, #8B0000 30%, #5C0011 100%);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.6);
+            /* Увеличиваем область касания для iOS */
+            min-width: 44px;
+            min-height: 44px;
+        }
+
+        .wax-seal::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle, transparent 40%, rgba(92, 0, 17, 0.4) 100%);
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        .wax-seal img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+            filter: contrast(1.3) brightness(0.9) saturate(1.5);
+            mix-blend-mode: hard-light;
+            opacity: 0.95;
+            /* Предотвращаем сохранение изображения на iOS */
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        .wax-seal:active {
+            transform: translate(-50%, -50%) scale(0.95);
+            -webkit-transform: translate(-50%, -50%) scale(0.95);
+        }
+
+        .wax-seal:hover {
+            transform: translate(-50%, -50%) scale(1.08);
+            -webkit-transform: translate(-50%, -50%) scale(1.08);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+        }
+
+        .envelope-container.opening .envelope-flap {
+            transform: rotateX(180deg);
+            -webkit-transform: rotateX(180deg);
+            opacity: 0;
+        }
+
+        .envelope-container.opening .wax-seal {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.3);
+            -webkit-transform: translate(-50%, -50%) scale(0.3);
+            transition: all 0.5s ease;
+            -webkit-transition: all 0.5s ease;
+        }
+
+        .envelope-container.opening {
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.8s ease 0.5s;
+            pointer-events: none;
+        }
+
+        /* Main Content */
+        .main-content {
+            opacity: 0;
+            transition: opacity 1.5s ease 0.5s;
+            -webkit-transition: opacity 1.5s ease 0.5s;
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            /* Фикс для iOS */
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+        }
+
+        .main-content.visible {
+            opacity: 1;
+        }
+
+        /* Decorative Divider */
+        .divider {
+            width: 200px;
+            height: 60px;
+            margin: 30px auto;
+            background-image: url('https://i.pinimg.com/736x/74/5b/17/745b17732e30292f7671d85e9ce2c0e7.jpg?w=740&q=80');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.3;
+            filter: contrast(3) brightness(0.5) saturate(0);
+            mix-blend-mode: multiply;
+        }
+
+        .divider-gold {
+            filter: brightness(0.6) sepia(1) saturate(2) hue-rotate(10deg) contrast(1.5);
+            opacity: 0.6;
+        }
+
+        /* Invitation Text */
+        .invitation-section {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .invitation-text {
+            font-size: 1.8rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: var(--text-color);
+            /* Запрещаем выделение текста на iOS */
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        .name-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .name-decoration {
+            font-size: 3rem;
+            color: var(--gold-accent);
+            opacity: 0.6;
+        }
+
+        .bride-name {
+            font-family: 'Playfair Display', 'Times New Roman', serif;
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--green-primary);
+            letter-spacing: 0.1em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Illustration */
+        .illustration-container {
+            text-align: center;
+            margin: 40px 0;
+            position: relative;
+        }
+
+        .bride-illustration {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            position: relative;
+            text-align: center;
+            overflow: hidden;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            background: linear-gradient(135deg, #f5f0e8 0%, #e8e0d0 100%);
+        }
+
+        .bride-illustration img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 20px;
+            transition: transform 0.3s ease;
+            -webkit-transition: -webkit-transform 0.3s ease;
+            object-fit: cover;
+            /* Фикс для iOS */
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* Info Sections */
+        .info-section {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(45, 80, 22, 0.1);
+            border: 1px solid rgba(45, 80, 22, 0.1);
+            /* Фикс для iOS backdrop-filter */
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+
+        .info-title {
+            font-family: 'Playfair Display', 'Times New Roman', serif;
+            font-size: 1.8rem;
+            color: var(--green-primary);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        .venue-name {
+            font-family: 'Playfair Display', 'Times New Roman', serif;
+            font-size: 2.2rem;
+            color: var(--green-primary);
+            margin-bottom: 10px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+        }
+
+        .info-text {
+            font-size: 1.4rem;
+            line-height: 1.6;
+            color: var(--text-color);
+        }
+
+        /* Calendar */
+        .calendar-container {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 4px 20px rgba(45, 80, 22, 0.1);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+
+        .calendar-header {
+            text-align: center;
+            font-family: 'Playfair Display', 'Times New Roman', serif;
+            font-size: 1.5rem;
+            color: var(--green-primary);
+            margin-bottom: 20px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            text-align: center;
+        }
+
+        .calendar-day-header {
+            font-weight: 600;
+            color: var(--green-primary);
+            padding: 10px;
+            font-size: 0.9rem;
+        }
+
+        .calendar-day {
+            padding: 15px 10px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            -webkit-transition: all 0.3s ease;
+            /* Увеличиваем область касания */
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-day.other-month {
+            color: #ccc;
+        }
+
+        .calendar-day.highlighted {
+            background: var(--green-primary);
+            color: white;
+            position: relative;
+            transform: scale(1.1);
+            -webkit-transform: scale(1.1);
+        }
+
+        .calendar-day.highlighted::after {
+            content: '♥';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            color: #e74c3c;
+            font-size: 1.2rem;
+            animation: heartbeat 1.5s ease-in-out infinite;
+            -webkit-animation: heartbeat 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); -webkit-transform: scale(1); }
+            50% { transform: scale(1.3); -webkit-transform: scale(1.3); }
+        }
+
+        @-webkit-keyframes heartbeat {
+            0%, 100% { -webkit-transform: scale(1); }
+            50% { -webkit-transform: scale(1.3); }
+        }
+
+        /* Countdown */
+        .countdown-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+
+        .countdown-title {
+            font-family: 'Playfair Display', 'Times New Roman', serif;
+            font-size: 2rem;
+            color: var(--green-primary);
+            margin-bottom: 20px;
+        }
+
+        .countdown-boxes {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .countdown-box {
+            background: var(--green-primary);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            min-width: 80px;
+            box-shadow: 0 4px 15px rgba(45, 80, 22, 0.3);
+            /* Фикс для iOS */
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+        }
+
+        .countdown-number {
+            font-family: 'Playfair Display', 'Times New Roman', serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .countdown-label {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 5px;
+        }
+
+        /* Form */
+        .rsvp-section {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 40px 0;
+            box-shadow: 0 4px 20px rgba(45, 80, 22, 0.1);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+
+        .rsvp-text {
+            text-align: center;
+            font-size: 1.3rem;
+            margin-bottom: 30px;
+            color: var(--text-color);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: var(--green-primary);
+            font-weight: 600;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid rgba(45, 80, 22, 0.2);
+            border-radius: 10px;
+            font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+            font-size: 1.2rem;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+            -webkit-transition: all 0.3s ease;
+            /* Фикс для iOS input */
+            -webkit-appearance: none;
+            appearance: none;
+            -webkit-border-radius: 10px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--green-primary);
+            box-shadow: 0 0 10px rgba(45, 80, 22, 0.2);
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 10px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            -webkit-transition: all 0.3s ease;
+            /* Увеличиваем область касания */
+            min-height: 44px;
+        }
+
+        .radio-label:hover {
+            background: rgba(45, 80, 22, 0.05);
+        }
+
+        .radio-input {
+            width: 20px;
+            height: 20px;
+            margin-right: 15px;
+            accent-color: var(--green-primary);
+            /* Фикс для iOS radio */
+            -webkit-appearance: none;
+            appearance: none;
+            border: 2px solid var(--green-primary);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .radio-input:checked {
+            background: var(--green-primary);
+            border-color: var(--green-primary);
+        }
+
+        .radio-input:checked::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: var(--green-primary);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-family: 'Cormorant Garamond', 'Times New Roman', serif;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            -webkit-transition: all 0.3s ease;
+            margin-top: 20px;
+            /* Фикс для iOS button */
+            -webkit-appearance: none;
+            appearance: none;
+            -webkit-border-radius: 30px;
+            /* Увеличиваем область касания */
+            min-height: 44px;
+        }
+
+        .submit-btn:hover {
+            background: #1e3a0f;
+            transform: translateY(-2px);
+            -webkit-transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(45, 80, 22, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+            -webkit-transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Music Control */
+        .music-control {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            background: var(--green-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            -webkit-transition: all 0.3s ease;
+            /* Фикс для iOS */
+            -webkit-appearance: none;
+            appearance: none;
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            /* Увеличиваем область касания */
+            min-width: 44px;
+            min-height: 44px;
+        }
+
+        .music-control:hover {
+            transform: scale(1.1);
+            -webkit-transform: scale(1.1);
+            background: #1e3a0f;
+        }
+
+        .music-control.playing {
+            animation: pulse 2s infinite;
+            -webkit-animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(45, 80, 22, 0.7); }
+            50% { box-shadow: 0 0 0 15px rgba(45, 80, 22, 0); }
+        }
+
+        @-webkit-keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(45, 80, 22, 0.7); }
+            50% { box-shadow: 0 0 0 15px rgba(45, 80, 22, 0); }
+        }
+
+        /* Success Message */
+        .success-message {
+            display: none;
+            text-align: center;
+            padding: 30px;
+            background: rgba(45, 80, 22, 0.1);
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .success-message.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+            -webkit-animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); -webkit-transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); -webkit-transform: translateY(0); }
+        }
+
+        @-webkit-keyframes fadeIn {
+            from { opacity: 0; -webkit-transform: translateY(-10px); }
+            to { opacity: 1; -webkit-transform: translateY(0); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .wax-seal {
+                width: 140px;
+                height: 140px;
+            }
+
+            .bride-name {
+                font-size: 3rem;
+            }
+
+            .name-decoration {
+                font-size: 2rem;
+            }
+
+            .invitation-text {
+                font-size: 1.4rem;
+            }
+
+            .venue-name {
+                font-size: 1.8rem;
+            }
+
+            .countdown-box {
+                min-width: 60px;
+                padding: 15px;
+            }
+
+            .countdown-number {
+                font-size: 1.8rem;
+            }
+
+            .bride-illustration {
+                max-width: 300px;
+            }
+
+            .bg-ornament-center {
+                width: 400px;
+                height: 400px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .wax-seal {
+                width: 120px;
+                height: 120px;
+            }
+
+            .bride-name {
+                font-size: 2.5rem;
+            }
+
+            .name-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .name-decoration {
+                display: none;
+            }
+
+            .venue-name {
+                font-size: 1.5rem;
+            }
+
+            .bride-illustration {
+                max-width: 250px;
+            }
+
+            .bg-ornament-center {
+                width: 300px;
+                height: 300px;
+            }
+            
+            .rsvp-section {
+                padding: 25px;
+            }
+        }
+
+        /* iOS specific fixes */
+        @supports (-webkit-touch-callout: none) {
+            /* CSS specific to iOS devices */
+            .envelope-container {
+                height: -webkit-fill-available;
+            }
+            
+            body {
+                min-height: -webkit-fill-available;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Ornament -->
+    <div class="bg-ornament-center"></div>
+
+    <!-- Envelope Overlay -->
+    <div class="envelope-container" id="envelopeContainer">
+        <div class="envelope-bg"></div>
+        <div class="envelope-bottom"></div>
+        <div class="envelope-left"></div>
+        <div class="envelope-right"></div>
+        <div class="envelope-flap"></div>
+        
+        <div class="wax-seal" id="waxSeal" role="button" aria-label="Открыть приглашение">
+            <img src="https://img.freepik.com/premium-psd/red-wax-seal-with-floral-design_1263815-14952.jpg?semt=ais_hybrid&w=740" alt="Восковая печать">
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        
+        <!-- Invitation Section -->
+        <div class="invitation-section">
+            <div class="divider"></div>
+            <p class="invitation-text">Сіздерді аяулы қызымыз</p>
+            
+            <div class="name-container">
+                <span class="name-decoration">❦</span>
+                <h1 class="bride-name">Тансуу</h1>
+                <span class="name-decoration">❦</span>
+            </div>
+            
+            <p class="invitation-text">
+                ҰЗАТУ ТОЙЫНА АРНАЛҒАН<br>
+                САЛТАНАТТЫ АҚ ДАСТАРХАНЫМЫЗДЫҢ<br>
+                ҚАДІРЛІ ҚОНАҒЫ БОЛУҒА ШАҚЫРАМЫЗ!
+            </p>
+            <div class="divider divider-gold"></div>
+        </div>
+
+        <!-- Illustration -->
+        <div class="illustration-container">
+            <div class="bride-illustration">
+                <img src="https://papik.pro/izobr/uploads/posts/2023-03/1679461203_papik-pro-p-kartina-devushka-s-dombroi-8.jpg" 
+                     alt="Қазақ қызы домбырада ойнауда" loading="lazy">
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Location -->
+        <div class="info-section">
+            <h3 class="info-title">Мекенжайы</h3>
+            <div class="venue-name">Sultan Hall</div>
+            <p class="info-text">Алматы қаласы,<br>Хан-Тенгри микрорайоны,<br>№ 127 ғимарат</p>
+        </div>
+
+        <!-- Time -->
+        <div class="info-section">
+            <h3 class="info-title">Той уақыты:</h3>
+            <p class="info-text">
+                Жексенбі күні,<br>
+                <strong>Наурыздың 22-сіне,</strong><br>
+                Сағат <strong>19:00</strong> басталады
+            </p>
+        </div>
+
+        <!-- Calendar -->
+        <div class="calendar-container">
+            <div class="calendar-header">2026 жыл - Наурыз</div>
+            <div class="calendar-grid">
+                <div class="calendar-day-header">Дс</div>
+                <div class="calendar-day-header">Сс</div>
+                <div class="calendar-day-header">Ср</div>
+                <div class="calendar-day-header">Бс</div>
+                <div class="calendar-day-header">Жм</div>
+                <div class="calendar-day-header">Сб</div>
+                <div class="calendar-day-header">Жс</div>
+                
+                <div class="calendar-day other-month">23</div>
+                <div class="calendar-day other-month">24</div>
+                <div class="calendar-day other-month">25</div>
+                <div class="calendar-day other-month">26</div>
+                <div class="calendar-day other-month">27</div>
+                <div class="calendar-day">1</div>
+                <div class="calendar-day">2</div>
+                
+                <div class="calendar-day">3</div>
+                <div class="calendar-day">4</div>
+                <div class="calendar-day">5</div>
+                <div class="calendar-day">6</div>
+                <div class="calendar-day">7</div>
+                <div class="calendar-day">8</div>
+                <div class="calendar-day">9</div>
+                
+                <div class="calendar-day">10</div>
+                <div class="calendar-day">11</div>
+                <div class="calendar-day">12</div>
+                <div class="calendar-day">13</div>
+                <div class="calendar-day">14</div>
+                <div class="calendar-day">15</div>
+                <div class="calendar-day">16</div>
+                
+                <div class="calendar-day">17</div>
+                <div class="calendar-day">18</div>
+                <div class="calendar-day">19</div>
+                <div class="calendar-day">20</div>
+                <div class="calendar-day">21</div>
+                <div class="calendar-day highlighted">22</div>
+                <div class="calendar-day">23</div>
+                
+                <div class="calendar-day">24</div>
+                <div class="calendar-day">25</div>
+                <div class="calendar-day">26</div>
+                <div class="calendar-day">27</div>
+                <div class="calendar-day">28</div>
+                <div class="calendar-day">29</div>
+                <div class="calendar-day">30</div>
+                
+                <div class="calendar-day">31</div>
+                <div class="calendar-day other-month">1</div>
+                <div class="calendar-day other-month">2</div>
+                <div class="calendar-day other-month">3</div>
+                <div class="calendar-day other-month">4</div>
+                <div class="calendar-day other-month">5</div>
+                <div class="calendar-day other-month">6</div>
+            </div>
+        </div>
+
+        <!-- Countdown -->
+        <div class="countdown-container">
+            <h3 class="countdown-title">Тойға</h3>
+            <div class="countdown-boxes" id="countdown">
+                <div class="countdown-box">
+                    <span class="countdown-number" id="days">00</span>
+                    <span class="countdown-label">күн</span>
+                </div>
+                <div class="countdown-box">
+                    <span class="countdown-number" id="hours">00</span>
+                    <span class="countdown-label">сағат</span>
+                </div>
+                <div class="countdown-box">
+                    <span class="countdown-number" id="minutes">00</span>
+                    <span class="countdown-label">минут</span>
+                </div>
+                <div class="countdown-box">
+                    <span class="countdown-number" id="seconds">00</span>
+                    <span class="countdown-label">секунд</span>
+                </div>
+            </div>
+            <h3 class="countdown-title">уақыт бар</h3>
+        </div>
+
+        <div class="divider divider-gold"></div>
+
+        <!-- RSVP Form -->
+        <div class="rsvp-section">
+            <p class="rsvp-text">
+                Төмендегі сауалнаманы толтырып,<br>
+                тойға қатысуыңызды растауыңызды сұраймыз:
+            </p>
+            
+            <form id="rsvpForm">
+                <div class="form-group">
+                    <label class="form-label" for="name">Аты-жөніңіз</label>
+                    <input type="text" id="name" name="user_name" class="form-input" required placeholder="Аты-жөніңізді жазыңыз" autocomplete="name">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Қатысуыңыз:</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="attendance" value="Иә, әрине келемін" class="radio-input" required>
+                            <span>Иә, әрине келемін</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="attendance" value="Жұбайыммен келемін" class="radio-input">
+                            <span>Жұбайыммен келемін</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="attendance" value="Өтінішке орай, келе алмаймын" class="radio-input">
+                            <span>Өтінішке орай, келе алмаймын</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn" id="submitBtn">Жіберу</button>
+            </form>
+            
+            <div class="success-message" id="successMessage">
+                <h3 style="color: var(--green-primary); font-family: 'Playfair Display', serif; margin-bottom: 10px;">
+                    Рахмет!
+                </h3>
+                <p>Сіздің жауабыңыз қабылданды.</p>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+        
+        <div style="text-align: center; padding: 20px; color: var(--green-primary); opacity: 0.7;">
+            <p style="font-style: italic;">Той иелері: Ержан мен Раушан</p>
+        </div>
+    </div>
+
+    <!-- Music Control -->
+    <button class="music-control" id="musicBtn" aria-label="Включить музыку">
+        🎵
+    </button>
+
+    <!-- Audio Element с preload none для iOS -->
+    <audio id="bgMusic" loop preload="none" playsinline>
+        <source src="https://agugai.kz/uploads/audios/6447d78d2683487ba4e9bae6fd84df18.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // Ждем полной загрузки DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            // Инициализация EmailJS с проверкой
+            if (typeof emailjs !== 'undefined') {
+                try {
+                    emailjs.init("OEFFvMUOX-43EB25L");
+                } catch (e) {
+                    console.log('EmailJS init error:', e);
+                }
+            }
+
+            // Назначаем обработчик на печать (и click, и touch)
+            const waxSeal = document.getElementById('waxSeal');
+            if (waxSeal) {
+                waxSeal.addEventListener('click', openEnvelope);
+                waxSeal.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    openEnvelope();
+                });
+            }
+
+            // Назначаем обработчик на кнопку музыки
+            const musicBtn = document.getElementById('musicBtn');
+            if (musicBtn) {
+                musicBtn.addEventListener('click', toggleMusic);
+                musicBtn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    toggleMusic();
+                });
+            }
+
+            // Форма
+            const rsvpForm = document.getElementById('rsvpForm');
+            if (rsvpForm) {
+                rsvpForm.addEventListener('submit', handleFormSubmit);
+            }
+
+            // Запускаем обратный отсчет
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+        });
+
+        // Открытие конверта с фиксами для iOS
+        function openEnvelope() {
+            const container = document.getElementById('envelopeContainer');
+            const mainContent = document.getElementById('mainContent');
+            const music = document.getElementById('bgMusic');
+            const musicBtn = document.getElementById('musicBtn');
+            
+            if (!container || container.classList.contains('opening')) return;
+            
+            container.classList.add('opening');
+            
+            // iOS требует явного вызова play() после пользовательского действия
+            if (music) {
+                music.volume = 0.4;
+                // Для iOS важно вызвать play() сразу в обработчике события
+                var playPromise = music.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(function() {
+                        if (musicBtn) {
+                            musicBtn.classList.add('playing');
+                            musicBtn.textContent = '🎵';
+                        }
+                        isPlaying = true;
+                    }).catch(function(error) {
+                        console.log('Audio play failed:', error);
+                        // На iOS автоплей блокируется, показываем кнопку
+                        if (musicBtn) {
+                            musicBtn.textContent = '🔇';
+                        }
+                        isPlaying = false;
+                    });
+                }
+            }
+            
+            setTimeout(function() {
+                container.classList.add('hidden');
+                if (mainContent) mainContent.classList.add('visible');
+            }, 800);
+        }
+
+        // Обратный отсчет
+        function updateCountdown() {
+            const eventDate = new Date('2026-03-22T19:00:00');
+            const now = new Date();
+            const diff = eventDate - now;
+            
+            if (diff > 0) {
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                const daysEl = document.getElementById('days');
+                const hoursEl = document.getElementById('hours');
+                const minutesEl = document.getElementById('minutes');
+                const secondsEl = document.getElementById('seconds');
+                
+                if (daysEl) daysEl.textContent = String(days).padStart(2, '0');
+                if (hoursEl) hoursEl.textContent = String(hours).padStart(2, '0');
+                if (minutesEl) minutesEl.textContent = String(minutes).padStart(2, '0');
+                if (secondsEl) secondsEl.textContent = String(seconds).padStart(2, '0');
+            }
+        }
+
+        // Управление музыкой
+        let isPlaying = false;
+        function toggleMusic() {
+            const music = document.getElementById('bgMusic');
+            const btn = document.getElementById('musicBtn');
+            
+            if (!music || !btn) return;
+            
+            if (isPlaying) {
+                music.pause();
+                btn.classList.remove('playing');
+                btn.textContent = '🔇';
+                isPlaying = false;
+            } else {
+                // Для iOS важно вызвать play() в ответ на пользовательское действие
+                var playPromise = music.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(function() {
+                        btn.classList.add('playing');
+                        btn.textContent = '🎵';
+                        isPlaying = true;
+                    }).catch(function(error) {
+                        console.log('Play failed:', error);
+                        alert('Музыка ойнату үшін экранды басыңыз');
+                    });
+                }
+            }
+        }
+
+        // Отправка формы
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('submitBtn');
+            if (!btn) return;
+            
+            btn.disabled = true;
+            btn.textContent = 'Жіберілуде...';
+            
+            if (typeof emailjs !== 'undefined') {
+                emailjs.sendForm('service_nnf9nin', 'template_5lmjuad', this)
+                    .then(function() {
+                        const successMsg = document.getElementById('successMessage');
+                        if (successMsg) successMsg.classList.add('show');
+                        document.getElementById('rsvpForm').reset();
+                        btn.textContent = 'Жіберу';
+                        btn.disabled = false;
+                    }, function(error) {
+                        alert('Қате кетті, қайта көріңіз: ' + (error.text || 'Белгісіз қате'));
+                        btn.textContent = 'Жіберу';
+                        btn.disabled = false;
+                    });
+            } else {
+                alert('EmailJS жүктелмеді. Интернет қосылымын тексеріңіз.');
+                btn.textContent = 'Жіберу';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
